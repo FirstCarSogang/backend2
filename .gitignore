@@ -1,1 +1,5 @@
 myvenv
+backend/firstCarSogang_backend/__pycache__
+backend/firstCarSogang_signuplogin/__pycache__
+backend/media
+backend/db.sqlite3

@@ -14,10 +14,13 @@ from django.utils.decorators import method_decorator
 from datetime import datetime, timedelta
 import json
 import jwt
-from django.conf import settings
-
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import check_password
+from django.http import FileResponse
+import os
+from django.http import HttpResponse
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
 # ===========================================================================================
 @method_decorator(csrf_exempt, name='dispatch')
@@ -86,9 +89,9 @@ class mail_otp(View):
                 return JsonResponse({'error': '잘못된 JSON 형식입니다.'}, status=400)
 
             if email:
-                # OTP 생성
-                otp = generate_unique_otp()
-                request.session['otp'] = otp
+                # OTP 생성 및 저장
+                otp_instance = EmailVerificationOTP.create(email)
+                otp = otp_instance.otp
                 
                 # 생성된 OTP를 이메일로 전송
                 subject = 'OTP Verification'
@@ -100,7 +103,6 @@ class mail_otp(View):
                 response_data = {
                     'success': True,
                     'message': 'OTP가 이메일로 전송되었습니다.',
-                    'otp': otp
                 }
                 return JsonResponse(response_data, status=200)
             else:
@@ -121,20 +123,22 @@ class otp_check(View):
             try:
                 data = json.loads(request.body)
                 input_otp = data.get('input_otp')
-                verification_otp = data.get('verification_otp')
+                email = data.get('email')
             except json.JSONDecodeError:
                 return JsonResponse({'success': False, 'error_message': '잘못된 JSON 형식입니다.'}, status=400)
 
-            if not input_otp or not verification_otp:
-                return JsonResponse({'success': False, 'error_message': '입력한 OTP 또는 응답한 OTP가 제공되지 않았습니다.'}, status=400)
-
-            # 클라이언트가 입력한 OTP와 응답한 OTP 비교
-            if input_otp == verification_otp:
-                return JsonResponse({'success': True, 'message': 'OTP 인증이 완료되었습니다.'}, status=200)
-            else:
-                return JsonResponse({'success': False, 'error_message': '입력한 OTP가 유효하지 않습니다.'}, status=400)
+        if email and input_otp:
+            try:
+                # 해당 이메일과 OTP가 일치하는지 확인
+                otp_instance = EmailVerificationOTP.objects.get(email=email, otp=input_otp)
+                if otp_instance.is_valid():
+                    return JsonResponse({'success': True, 'message': 'OTP 인증이 완료되었습니다.'}, status=200)
+                else:
+                    return JsonResponse({'success': False, 'message': 'OTP가 만료되었습니다.'}, status=400)
+            except EmailVerificationOTP.DoesNotExist:
+                return JsonResponse({'success': False, 'message': '유효하지 않은 OTP입니다.'}, status=400)
         else:
-            return JsonResponse({'success': False, 'error_message': '잘못된 요청 방식입니다.'}, status=405)
+            return JsonResponse({'success': False, 'message': '이메일 주소와 OTP를 모두 제공해야 합니다.'}, status=400)
     
 # ===========================================================================================   
 @method_decorator(csrf_exempt, name='dispatch')
@@ -159,7 +163,7 @@ class LoginView(View):
 
         # 로그인 성공 시 Access Token과 Refresh Token 발급
         access_token = generate_access_token(username)
-        refresh_token = generate_refresh_token()
+        refresh_token = generate_refresh_token(username)
 
     # Refresh Token을 DB에 저장
         user_profile.refresh_token = refresh_token
@@ -182,29 +186,27 @@ class LoginView(View):
 # =========================================================================================== 
 @csrf_exempt
 def logout(request):
+    if request.method == 'DELETE':
     # 헤더에서 Access Token 추출
-    token = request.headers.get('Authorization', '').split()[1]
+        token = request.headers.get('Authorization', '').split()[1]
 
     # 토큰에서 사용자 정보 추출
-    try:
+        
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
         username = payload['username']
-    except jwt.ExpiredSignatureError:
-        return JsonResponse({'error': 'Expired Token'}, status=401)
-    except jwt.InvalidTokenError:
-        return JsonResponse({'error': 'Invalid Token'}, status=401)
-    except IndexError:
-        return JsonResponse({'error': 'Access Token not provided'}, status=401)
+       
 
-    # 사용자의 refresh_token 초기화 (예시로 설정)
-    try:
-        user = UserProfile.objects.get(username=username)
-        user.refresh_token = None  # refresh_token 초기화
-        user.save()
-        return JsonResponse({'message': '로그아웃되었습니다.'}, status=200)
-    except UserProfile.DoesNotExist:
-        return JsonResponse({'error': 'User not found'}, status=404)
-        
+        # 사용자의 refresh_token 초기화 (예시로 설정)
+        try:
+            user = UserProfile.objects.get(username=username)
+            user.refresh_token = None  # refresh_token 초기화
+            user.save()
+            return JsonResponse({'message': '로그아웃되었습니다.'}, status=200)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+    else:
+        return JsonResponse({'error': 'Method Not Allowed'}, status=405)     
+    
 # ===========================================================================================
 @method_decorator(csrf_exempt, name='dispatch')
 class reset_otp(View):
@@ -341,15 +343,10 @@ class MyPageView(View):
         token = request.headers.get('Authorization').split()[1]
 
         # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+        
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
         
         # 사용자 정보 가져오기
         try:
@@ -383,15 +380,10 @@ def toggle_train_status(request):
         token = request.headers.get('Authorization').split()[1]
         
          # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+        
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
         
         # 사용자 정보 가져오기
         try:
@@ -434,15 +426,10 @@ def change_password(request):
         token = request.headers.get('Authorization').split()[1]
         
          # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+        
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
     
         # 사용자 정보 가져오기
         try:
@@ -482,15 +469,10 @@ def change_kakaotalkid(request):
         token = request.headers.get('Authorization').split()[1]
         
          # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+       
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
     
         # 사용자 정보 가져오기
         try:
@@ -522,15 +504,10 @@ class kakaotalk(View):
         token = request.headers.get('Authorization').split()[1]
 
         # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+        
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
         
         # 사용자 정보 가져오기
         try:
@@ -564,15 +541,10 @@ def useTicket(request):
         token = request.headers.get('Authorization').split()[1]
         
          # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+       
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
         
         # 사용자 정보 가져오기
         try:
@@ -593,59 +565,55 @@ def useTicket(request):
     else:
         return JsonResponse({'error': 'POST method required.'}, status=405)
     
-    
-    
-    
-# =========================================================================================== 
+# ===========================================================================================    
 class matching(View):
     def get(self, request):
-        
         # 헤더에서 Bearer 토큰 추출
         token = request.headers.get('Authorization').split()[1]
 
         # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+        
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+      
         
         # 사용자 정보 가져오기
         try:
             user = UserProfile.objects.get(username=username)
         except UserProfile.DoesNotExist:
-            return JsonResponse({'error': 'User not found'}, status=404)
-        
+            return JsonResponse({'error': 'User not found'}, status=404) 
+  
+        # 사용자의 사진 URL 가져오기
+        photo1_url = user.photo1.url if user.photo1 else None
+        photo2_url = user.photo2.url if user.photo2 else None
+        photo3_url = user.photo3.url if user.photo3 else None
+
+        # 추가 정보 가져오기
+        ticket_count = user.ticketCount
+        use_ticket = user.useTicket
+
+        # 모든 정보를 JSON 응답에 담아 반환
         response_data = {
-        'photo1_url': user.photo1.url if user.photo1 else None,
-        'photo2_url': user.photo2.url if user.photo2 else None,
-        'photo3_url': user.photo3.url if user.photo3 else None,
-        'useTicket': user.useTicket
+            'photo1_url': photo1_url,
+            'photo2_url': photo2_url,
+            'photo3_url': photo3_url,
+            'ticket_count': ticket_count,
+            'use_ticket': use_ticket
         }
-    
         return JsonResponse(response_data, status=200)
-    
+
 # ===========================================================================================    
 @csrf_exempt
 def update_user_photos(request):
     if request.method == 'POST':
         # 헤더에서 Access Token을 추출
-        token = request.headers.get('Authorization').split()[1]
+        token = request.headers.get('Authorization', '').split()[1]
         
         # 토큰에서 사용자 정보 추출
-        try:
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-            username = payload['username']
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({'error': 'Expired Token'}, status=401)
-        except jwt.InvalidTokenError:
-            return JsonResponse({'error': 'Invalid Token'}, status=401)
-        except IndexError:
-            return JsonResponse({'error': 'Access Token not provided'}, status=401)
+      
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
         
         # 사용자 정보 가져오기
         try:
@@ -653,23 +621,59 @@ def update_user_photos(request):
         except UserProfile.DoesNotExist:
             return JsonResponse({'error': 'User not found'}, status=404)
         
-        # POST 요청의 body에서 JSON 데이터 추출
-        try:
-            data = json.loads(request.body)
-            photo1_url = data.get('photo1_url')
-            photo2_url = data.get('photo2_url')
-            photo3_url = data.get('photo3_url')
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON format'}, status=400)
+        # 프론트엔드에서 전송된 사진 파일 받기
+        photo1_file = request.FILES.get('photo1')
+        photo2_file = request.FILES.get('photo2')
+        photo3_file = request.FILES.get('photo3')
         
-        # 사용자의 사진 업데이트
-        user.photo1 = photo1_url
-        user.photo2 = photo2_url
-        user.photo3 = photo3_url
+        # 사용자의 기존 사진 파일 업데이트
+        if photo1_file:
+            user.photo1.save(photo1_file.name, photo1_file)
+        if photo2_file:
+            user.photo2.save(photo2_file.name, photo2_file)
+        if photo3_file:
+            user.photo3.save(photo3_file.name, photo3_file)
+        
+        # 업데이트된 정보 저장
         user.save()
         
-        # 업데이트 성공 메시지와 상태 코드 반환
-        return JsonResponse({'message': 'User photos updated successfully'}, status=200)
-    
+        return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
-        return JsonResponse({'error': 'POST method required'}, status=405)
+        return JsonResponse({'error': 'Method Not Allowed'}, status=405)
+    
+ # ===========================================================================================      
+@csrf_exempt
+def token(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            refresh_token =data.get('refresh_token')
+            access_token = data.get('access_token')
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON format in request body.'}, status=400)
+        
+        if not refresh_token or not access_token:
+            return JsonResponse({'error': 'Refresh Token과 Access Token을 모두 제공해야 합니다.'}, status=400)
+        
+        # Refresh Token의 유효성 검증
+        #payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=['HS256'])
+        
+        payload = jwt.decode(refresh_token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+
+        user = UserProfile.objects.get(username=username)
+        user_refresh_token = user.refresh_token
+            
+        if user_refresh_token == refresh_token:
+            decoded_token = jwt.decode(user_refresh_token, settings.SECRET_KEY, algorithms=['HS256'])
+            expiration_time = datetime.utcfromtimestamp(decoded_token['exp'])
+            if expiration_time < datetime.utcnow():
+            # refresh_token의 유효 기간이 지났을 경우
+                return JsonResponse({'error': 'Expired Refresh Token, Expired Access Token'}, status=401)
+            else:
+            # refresh_token의 유효 기간이 지나지 않았을 경우
+            # 새로운 Access Token 생성
+                new_access_token = generate_access_token(username)
+                return JsonResponse({'access_token': new_access_token}, status=200) 
+    else:
+        return JsonResponse({'error': 'POST 메서드만 허용됩니다.'}, status=405)        

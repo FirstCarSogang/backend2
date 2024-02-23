@@ -25,7 +25,7 @@ class UserProfile(AbstractUser):
     
     otp = models.CharField(max_length=5,default='20249')
     ticketCount=models.IntegerField(default=3)
-    useTicket=models.BooleanField(default=False)
+    useTicket=models.BooleanField(default=True)
       
       
     USERNAME_FIELD = 'username'
@@ -40,8 +40,6 @@ class UserProfile(AbstractUser):
     
 
 
-
-
 class EmailVerificationOTP(models.Model):
     email = models.EmailField()
     otp = models.CharField(max_length=5)
@@ -50,7 +48,7 @@ class EmailVerificationOTP(models.Model):
     @classmethod
     def create(cls, email):
         # 새로운 OTP 생성
-        otp = generate_unique_otp()
+        otp = generate_otp()
         # 생성된 OTP와 이메일 주소로 객체 생성
         return cls.objects.create(email=email, otp=otp)
 
@@ -61,14 +59,12 @@ class EmailVerificationOTP(models.Model):
 
     def __str__(self):
         return self.email
-    
-def generate_unique_otp(length=5):
+
+def generate_otp(length=5):
     # 사용할 문자열 세트 정의 (예: 숫자)
     characters = string.digits
     # 임시로 생성된 OTP 저장
     otp = ''.join(random.choices(characters, k=length))
 
     return otp
-
-
 

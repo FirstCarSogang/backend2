@@ -26,4 +26,7 @@ urlpatterns = [
     
     path('matching/ticketuse',useTicket, name= 'useTicket'),
     path('matching',matching.as_view(), name= 'matching'),
+    path('matching/changephoto',update_user_photos, name= 'changephoto'),
+    
+    path('token',token, name='token'),
 ]

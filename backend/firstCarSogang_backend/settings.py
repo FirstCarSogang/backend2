@@ -140,8 +140,8 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'mail.sogang.ac.kr'
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
-EMAIL_HOST_USER = ''
-EMAIL_HOST_PASSWORD = ''
+EMAIL_HOST_USER = 'hansowon@sogang.ac.kr'
+EMAIL_HOST_PASSWORD = 'cjtcktjrkd2024@'
 
 
 
@@ -158,11 +158,16 @@ STATICFILES_DIRS = [
 ]
 
 
-from pathlib import Path
+import os
 
+# BASE_DIR: Django 프로젝트의 루트 디렉토리
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# 미디어 파일이 저장될 디렉토리 설정
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# 미디어 파일에 접근할 때 사용할 URL 설정
+MEDIA_URL = '/media/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
