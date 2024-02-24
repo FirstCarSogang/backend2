@@ -1,8 +1,6 @@
 from django.urls import path
 from firstCarSogang_signuplogin.views import *
 from . import views
-from django.conf import settings
-from django.conf.urls.static import static
 
 urlpatterns = [
     path('login',LoginView.as_view(), name='LoginView'),
@@ -29,4 +27,5 @@ urlpatterns = [
     path('matching/changephoto',update_user_photos, name= 'changephoto'),
     
     path('token',token, name='token'),
+    path('send_user_info/', views.send_user_info, name='send_user_info'),
 ]
