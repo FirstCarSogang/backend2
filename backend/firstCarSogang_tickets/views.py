@@ -1,7 +1,8 @@
 from django.shortcuts import render, redirect
 from .models import Day1Question,Ticket,AfterDay1Question,Comment
 from django.http import JsonResponse
-
+from django.views.decorators.csrf import csrf_exempt  
+@csrf_exempt  
 def slow_train(request):
     username = request.user.username
     ticket = Ticket.objects.filter(user=username)
