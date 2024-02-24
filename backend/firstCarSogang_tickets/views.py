@@ -4,7 +4,7 @@ from django.http import JsonResponse
 
 def slow_train(request):
     username = request.user.username
-    ticket = Ticket.objects.filter(ticketNumber=username)
+    ticket = Ticket.objects.filter(user=username)
     if request.method == 'DELETE':
             ticket.delete()
             return JsonResponse({'success': 'Ticket deleted successfully'}, status=200)
@@ -90,7 +90,6 @@ def get_ticket_questions(request, ticket_id):
 
 from django.views.decorators.csrf import csrf_exempt  
 @csrf_exempt  
-@csrf_exempt
 def get_day_questions(request, ticket_number, day):
     try:
         ticket = Ticket.objects.get(ticketNumber=ticket_number)
