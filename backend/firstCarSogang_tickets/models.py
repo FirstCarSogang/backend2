@@ -1,51 +1,27 @@
 from django.db import models
 from firstCarSogang_signuplogin.models import UserProfile
 from django.contrib.postgres.fields import ArrayField
-from random import sample
 from datetime import datetime 
 
 class Ticket(models.Model):
-    ticketNumber = models.IntegerField(verbose_name="티켓 번호")
+    ticketNumber = models.IntegerField(verbose_name="티켓 번호", null=True, blank=True)
     progressingDay = models.IntegerField(verbose_name="진행중인 날짜")
     isAnswered = models.BooleanField(verbose_name="답변 여부", default=False)
     choose = models.BooleanField(verbose_name="선택 여부", default=False)
-    dayQuestion=ArrayField(models.CharField(max_length=10,null=True,blank=True))
+    dayQuestion = ArrayField(models.CharField(max_length=10), null=True, blank=True)
     user = models.ForeignKey(UserProfile, verbose_name="내 티켓 아이디", on_delete=models.CASCADE, null=True, blank=True, related_name='tickets')
-    withWhom=models.IntegerField(verbose_name="상대편 티켓 아이디",null=True,blank=True)
+    withWhom = models.ForeignKey(UserProfile, verbose_name="상대편 티켓 아이디", on_delete=models.CASCADE, null=True, blank=True, related_name='tickets_with_whom')
+
     def __str__(self):
         return f"{self.ticketNumber}: {self.progressingDay} 일째 대화"
-
-    def initiate_conversation(self):
-        users_with_tickets = self.users.filter(useTicket=True)
-        pairs = []
-        odd_user = None
-        
-        users_with_tickets_list = list(users_with_tickets)
-        sample(users_with_tickets_list, len(users_with_tickets_list))  # Shuffling the list
-        
-        if len(users_with_tickets_list) % 2 == 0:
-            for i in range(0, len(users_with_tickets_list), 2):
-                pairs.append((users_with_tickets_list[i], users_with_tickets_list[i + 1]))
-        else:
-            odd_user = users_with_tickets_list.pop()
-
-            for i in range(0, len(users_with_tickets_list) - 1, 2):
-                pairs.append((users_with_tickets_list[i], users_with_tickets_list[i + 1]))
-
-        for user1, user2 in pairs:
-            user1.userTicket = False
-            user1.ticketCount -= 1
-            user2.userTicket = False
-            user2.ticketCount -= 1
-            user1.save()
-            user2.save()
 
 class Comment(models.Model):
     content = models.CharField(max_length=1000)
     created_at = models.DateTimeField(auto_now_add=True)
-    from_user = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    from_user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='comments')
 
-
+    def __str__(self):
+        return f"Comment by {self.from_user} at {self.created_at}"
 class Day1Question(models.Model):
     question = models.CharField(max_length=1000, verbose_name="질문")
     placeholder = models.CharField(max_length=1000)

@@ -1,59 +1,53 @@
 from django.shortcuts import render, redirect
 from .models import Day1Question,Ticket,AfterDay1Question,Comment
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt  
+from django.views.decorators.csrf import csrf_exempt
+from .models import UserProfile
+import json
+
 @csrf_exempt  
 def slow_train(request):
-    username = request.user.username
-    ticket = Ticket.objects.filter(user=username)
-    if request.method == 'DELETE':
-            ticket.delete()
-            return JsonResponse({'success': 'Ticket deleted successfully'}, status=200)
+    if request.method == 'GET':
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data in the request body'}, status=400)
         
-    if request.method == 'POST':
-            day = int(request.POST.get('day'))
-            choose = bool(request.POST.get('choose'))
-            
-            if day == 4:
-                ticket.choose = choose
-                ticket.save()
-                return JsonResponse({'success': 'Choose field updated successfully'}, status=200)
-            else:
-                return JsonResponse({'error': 'Choose field can only be updated on day 4'}, status=400)
-    data = {
-        'day1_questions': [
-            {
-                'id': question.id,
-                'question': question.question,
-                'placeholder': question.placeholder,
-            }
-            for question in ticket
-        ]
-    }
-    return JsonResponse(data)
-
-def get_ticket_info(request, ticket_id):
-    try:
-        ticket = Ticket.objects.get(pk=ticket_id)
+        username = data.get('username', '') 
         
-        with_whom = ticket.withWhom
-        if with_whom is not None:
-            associated_ticket = Ticket.objects.get(pk=with_whom)
-            data = {
-                'ticket_id': associated_ticket.id,
-                'ticket_number': associated_ticket.ticketNumber,
-                'progressing_day': associated_ticket.progressingDay,
-                'is_answered': associated_ticket.isAnswered,
-                'choose': associated_ticket.choose,
-                'day_question': associated_ticket.dayQuestion,
-                'with_whom': associated_ticket.withWhom
-            }
-            
-            return JsonResponse(data)
+        if username:
+            try:
+                user_profile = UserProfile.objects.get(username=username)
+                ticket = Ticket.objects.filter(user=user_profile).first()              
+                if ticket:
+                    return JsonResponse({'ticket_id': ticket.id, 'success': 'Ticket retrieved successfully'}, status=200)
+                else:
+                    return JsonResponse({'success': 'No ticket found for the user'}, status=200)
+            except UserProfile.DoesNotExist:
+                return JsonResponse({'error': 'User with the provided username does not exist'}, status=404)
         else:
-            return JsonResponse({'error': 'No associated ticket found'}, status=404)
-    except Ticket.DoesNotExist:
-        return JsonResponse({'error': 'Ticket does not exist'}, status=404)
+            return JsonResponse({'error': 'Username not provided in the JSON data'}, status=400)
+
+    elif request.method == 'DELETE':
+        username = request.GET.get('username', '')
+        
+        if username:
+            try:
+                user_profile = UserProfile.objects.get(username=username)
+                ticket = Ticket.objects.filter(user=user_profile).first()
+                
+                if ticket:
+                    ticket.delete()
+                    return JsonResponse({'success': 'Ticket deleted successfully'}, status=200)
+                else:
+                    return JsonResponse({'success': 'No ticket found for the user'}, status=200)
+            except UserProfile.DoesNotExist:
+                return JsonResponse({'error': 'User with the provided username does not exist'}, status=404)
+        else:
+            return JsonResponse({'error': 'Username not provided in the GET parameters'}, status=400)
+            
+    else:
+        return JsonResponse({'error': 'Only GET and DELETE requests are accepted for this endpoint'}, status=405)
 
 def get_ticket_questions(request, ticket_id):
     try:
@@ -89,7 +83,6 @@ def get_ticket_questions(request, ticket_id):
         return JsonResponse({'error': 'Ticket does not exist'}, status=404)
     
 
-from django.views.decorators.csrf import csrf_exempt  
 @csrf_exempt  
 def get_day_questions(request, ticket_number, day):
     try:

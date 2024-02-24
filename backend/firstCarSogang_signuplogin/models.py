@@ -3,6 +3,7 @@ from django.utils import timezone
 import random
 import string
 from django.contrib.auth.models import AbstractUser
+from random import sample
 
 def user_directory_path(instance, filename):
     # 파일 업로드 경로를 사용자 이름(username) 기반으로 지정
@@ -16,7 +17,6 @@ class UserProfile(AbstractUser):
     photo1 = models.ImageField(upload_to=user_directory_path,null=True)
     photo2 = models.ImageField(upload_to=user_directory_path,null=True)
     photo3 = models.ImageField(upload_to=user_directory_path,null=True)
-  
     password = models.CharField(max_length=25)
     train = models.BooleanField(default=True)
     
@@ -26,8 +26,7 @@ class UserProfile(AbstractUser):
     otp = models.CharField(max_length=5,default='20249')
     ticketCount=models.IntegerField(default=3)
     useTicket=models.BooleanField(default=True)
-      
-      
+
     USERNAME_FIELD = 'username'
     # Refresh Token 필드 추가
     refresh_token = models.CharField(max_length=255, blank=True, null=True)
