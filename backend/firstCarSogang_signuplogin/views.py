@@ -679,7 +679,7 @@ def token(request):
         return JsonResponse({'error': 'POST 메서드만 허용됩니다.'}, status=405)        
 
 from django.http import HttpResponse
-from .utils import send_user_info_to_server
+from .tasks import send_user_info_to_server
 
 def send_user_info(request):
     send_user_info_to_server()
