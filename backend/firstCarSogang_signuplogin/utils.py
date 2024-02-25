@@ -8,7 +8,7 @@ def generate_access_token(username):
     """
     
     # 토큰 만료 시간 설정 (예: 현재 시간으로부터 5시간 후)
-    expiration_time = datetime.utcnow() + timedelta(hours=5)
+    expiration_time = datetime.utcnow() + timedelta(hours=24)
     
     # Access Token의 payload에는 사용자의 학번과 만료 시간을 포함시킵니다.
     payload = {

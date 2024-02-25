@@ -143,9 +143,10 @@ class otp_check(View):
 # ===========================================================================================   
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
+    
     def post(self, request):
         data = json.loads(request.body)
-        username = data.get('username')
+        username = data.get('studentId')
         password = data.get('password')
 
         
@@ -170,17 +171,14 @@ class LoginView(View):
         user_profile.save()
 
         response_data = {
-            'access_token': access_token,
-            'refresh_token': refresh_token,
-            'username': user_profile.username,
-            # 필요한 다른 필드도 추가할 수 있음
-            'message': '로그인되었습니다.'
+            'accessToken': access_token,
+            'refreshToken': refresh_token,
+            'studentId': user_profile.username,
+            'message': 'login.'
         }
         
         return JsonResponse(response_data, status=200)
 
-    def get(self, request):
-        return JsonResponse({'error': 'GET 요청은 허용되지 않습니다.'}, status=405)
     
     
 # =========================================================================================== 
@@ -339,6 +337,7 @@ class PasswordResetView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class MyPageView(View):
     def get(self, request):
+        
         # 헤더에서 Bearer 토큰 추출
         token = request.headers.get('Authorization').split()[1]
 
