@@ -38,7 +38,7 @@ class Signup_register(View):
             # 모델에 데이터 저장
             user_profile = UserProfile(
                 name=data['name'],
-                username=data['username'],
+                username=data['studentId'],
                 kakaotalkID=data['kakaotalkID'],
                 email=data['email'],
                 photo1=data['photo1'],
@@ -52,7 +52,7 @@ class Signup_register(View):
             # 응답 데이터 구성
             response_data = {
                 'name': user_profile.name,
-                'username': user_profile.username,
+                'studentId': user_profile.username,
                 'kakaotalkID': user_profile.kakaotalkID,
                 'email': user_profile.email,
                 'photo1': str(user_profile.photo1),  # 이미지는 일단 경로로 전송
@@ -355,7 +355,7 @@ class MyPageView(View):
         
         # 응답 데이터 구성
         response_data = {
-            'username': user.username,
+            'studentId': user.username,
             'name': user.name,
             'train': user.train,
             # 필요한 다른 정보도 추가 가능
@@ -603,7 +603,7 @@ class matching(View):
 
 # ===========================================================================================    
 @csrf_exempt
-def update_user_photos(request):
+def update_user_photos1(request):
     if request.method == 'POST':
         # 헤더에서 Access Token을 추출
         token = request.headers.get('Authorization', '').split()[1]
@@ -621,15 +621,79 @@ def update_user_photos(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo1_file = request.FILES.get('photo1')
-        photo2_file = request.FILES.get('photo2')
-        photo3_file = request.FILES.get('photo3')
+        photo1_file = request.FILES.get('photo')
         
         # 사용자의 기존 사진 파일 업데이트
         if photo1_file:
             user.photo1.save(photo1_file.name, photo1_file)
+
+        
+        # 업데이트된 정보 저장
+        user.save()
+        
+        return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
+    else:
+        return JsonResponse({'error': 'Method Not Allowed'}, status=405)
+    
+
+ # ===========================================================================================   
+    
+@csrf_exempt
+def update_user_photos2(request):
+    if request.method == 'POST':
+        # 헤더에서 Access Token을 추출
+        token = request.headers.get('Authorization', '').split()[1]
+        
+        # 토큰에서 사용자 정보 추출
+      
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
+        
+        # 사용자 정보 가져오기
+        try:
+            user = UserProfile.objects.get(username=username)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+        
+        # 프론트엔드에서 전송된 사진 파일 받기
+        photo2_file = request.FILES.get('photo')
+        
+        # 사용자의 기존 사진 파일 업데이트
         if photo2_file:
             user.photo2.save(photo2_file.name, photo2_file)
+    
+        
+        # 업데이트된 정보 저장
+        user.save()
+        
+        return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
+    else:
+        return JsonResponse({'error': 'Method Not Allowed'}, status=405)
+
+ # ===========================================================================================       
+@csrf_exempt
+def update_user_photos3(request):
+    if request.method == 'POST':
+        # 헤더에서 Access Token을 추출
+        token = request.headers.get('Authorization', '').split()[1]
+        
+        # 토큰에서 사용자 정보 추출
+      
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        username = payload['username']
+       
+        
+        # 사용자 정보 가져오기
+        try:
+            user = UserProfile.objects.get(username=username)
+        except UserProfile.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
+        
+        # 프론트엔드에서 전송된 사진 파일 받기
+        photo3_file = request.FILES.get('photo')
+        
+        # 사용자의 기존 사진 파일 업데이트
         if photo3_file:
             user.photo3.save(photo3_file.name, photo3_file)
         
@@ -640,6 +704,10 @@ def update_user_photos(request):
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
     
+
+
+
+
  # ===========================================================================================      
 @csrf_exempt
 def token(request):

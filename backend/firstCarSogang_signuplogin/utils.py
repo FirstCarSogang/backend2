@@ -25,7 +25,7 @@ def generate_refresh_token(username):
     Refresh Token을 생성합니다.
     """
      # 토큰 만료 시간 설정 (예: 현재 시간으로부터 2주 후)
-    expiration_time = datetime.utcnow() + timedelta(weeks=2)
+    expiration_time = datetime.utcnow() + timedelta(weeks=4)
     payload = {
         'username': username,
         'exp': expiration_time

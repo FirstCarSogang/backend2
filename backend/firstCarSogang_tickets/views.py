@@ -18,11 +18,10 @@ def slow_train(request):
         # 헤더에서 Access Token을 추출
         token = request.headers.get('Authorization').split()[1]
         
-         # 토큰에서 사용자 정보 추출
+        # 토큰에서 사용자 정보 추출
         
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
         username = payload['username']
-       
         
         if username:
             try:
