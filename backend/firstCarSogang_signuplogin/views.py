@@ -30,7 +30,7 @@ class Signup_register(View):
             # POST 요청의 body에서 JSON 데이터 추출
             data = json.loads(request.body)
 
-            existing_user = UserProfile.objects.filter(username=data['username']).exists()
+            existing_user = UserProfile.objects.filter(username=data['studentId']).exists()
             if existing_user:
                 error_message = {"error": "이미 회원가입이 되어있는 학번입니다."}
                 return JsonResponse(error_message, status=400)
@@ -38,7 +38,7 @@ class Signup_register(View):
             # 모델에 데이터 저장
             user_profile = UserProfile(
                 name=data['name'],
-                username=data['username'],
+                username=data['studentId'],
                 kakaotalkID=data['kakaotalkID'],
                 email=data['email'],
                 photo1=data['photo1'],
@@ -52,7 +52,7 @@ class Signup_register(View):
             # 응답 데이터 구성
             response_data = {
                 'name': user_profile.name,
-                'username': user_profile.username,
+                'studentId': user_profile.username,
                 'kakaotalkID': user_profile.kakaotalkID,
                 'email': user_profile.email,
                 'photo1': str(user_profile.photo1),  # 이미지는 일단 경로로 전송
@@ -145,7 +145,7 @@ class otp_check(View):
 class LoginView(View):
     def post(self, request):
         data = json.loads(request.body)
-        username = data.get('username')
+        username = data.get('studentId')
         password = data.get('password')
 
         
@@ -172,7 +172,7 @@ class LoginView(View):
         response_data = {
             'access_token': access_token,
             'refresh_token': refresh_token,
-            'username': user_profile.username,
+            'studentId': user_profile.username,
             # 필요한 다른 필드도 추가할 수 있음
             'message': '로그인되었습니다.'
         }
@@ -356,7 +356,7 @@ class MyPageView(View):
         
         # 응답 데이터 구성
         response_data = {
-            'username': user.username,
+            'studentId': user.username,
             'name': user.name,
             'train': user.train,
             # 필요한 다른 정보도 추가 가능
@@ -393,7 +393,7 @@ def toggle_train_status(request):
         
         if train_status == 'fast':
             train_value = True
-        elif train_status == 'normal':
+        elif train_status == 'slow':
             train_value = False
         # 유저 정보에서 train 값을 변경
         user.train = train_value
@@ -588,6 +588,11 @@ class matching(View):
         photo2_url = user.photo2.url if user.photo2 else None
         photo3_url = user.photo3.url if user.photo3 else None
 
+        # 프론트엔드에서 접근할 수 있는 URL로 변환
+        photo1_url = 'http://127.0.0.1:8000' + photo1_url if photo1_url else None
+        photo2_url = 'http://127.0.0.1:8000' + photo2_url if photo2_url else None
+        photo3_url = 'http://127.0.0.1:8000' + photo3_url if photo3_url else None
+        
         # 추가 정보 가져오기
         ticket_count = user.ticketCount
         use_ticket = user.useTicket
@@ -678,8 +683,11 @@ def token(request):
     else:
         return JsonResponse({'error': 'POST 메서드만 허용됩니다.'}, status=405)        
 
+
 from django.http import HttpResponse
-from .utils import send_user_info_to_server
+from .tasks import send_user_info_to_server
+
+
 
 def send_user_info(request):
     send_user_info_to_server()
