@@ -30,7 +30,7 @@ class Signup_register(View):
             # POST 요청의 body에서 JSON 데이터 추출
             data = json.loads(request.body)
 
-            existing_user = UserProfile.objects.filter(username=data['username']).exists()
+            existing_user = UserProfile.objects.filter(username=data['studentId']).exists()
             if existing_user:
                 error_message = {"error": "이미 회원가입이 되어있는 학번입니다."}
                 return JsonResponse(error_message, status=400)
@@ -143,7 +143,6 @@ class otp_check(View):
 # ===========================================================================================   
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
-    
     def post(self, request):
         data = json.loads(request.body)
         username = data.get('studentId')
@@ -171,14 +170,17 @@ class LoginView(View):
         user_profile.save()
 
         response_data = {
-            'accessToken': access_token,
-            'refreshToken': refresh_token,
+            'access_token': access_token,
+            'refresh_token': refresh_token,
             'studentId': user_profile.username,
-            'message': 'login.'
+            # 필요한 다른 필드도 추가할 수 있음
+            'message': '로그인되었습니다.'
         }
         
         return JsonResponse(response_data, status=200)
 
+    def get(self, request):
+        return JsonResponse({'error': 'GET 요청은 허용되지 않습니다.'}, status=405)
     
     
 # =========================================================================================== 
@@ -337,7 +339,6 @@ class PasswordResetView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class MyPageView(View):
     def get(self, request):
-        
         # 헤더에서 Bearer 토큰 추출
         token = request.headers.get('Authorization').split()[1]
 
@@ -392,7 +393,7 @@ def toggle_train_status(request):
         
         if train_status == 'fast':
             train_value = True
-        elif train_status == 'normal':
+        elif train_status == 'slow':
             train_value = False
         # 유저 정보에서 train 값을 변경
         user.train = train_value
@@ -587,6 +588,11 @@ class matching(View):
         photo2_url = user.photo2.url if user.photo2 else None
         photo3_url = user.photo3.url if user.photo3 else None
 
+        # 프론트엔드에서 접근할 수 있는 URL로 변환
+        photo1_url = 'http://127.0.0.1:8000' + photo1_url if photo1_url else None
+        photo2_url = 'http://127.0.0.1:8000' + photo2_url if photo2_url else None
+        photo3_url = 'http://127.0.0.1:8000' + photo3_url if photo3_url else None
+        
         # 추가 정보 가져오기
         ticket_count = user.ticketCount
         use_ticket = user.useTicket
@@ -621,12 +627,12 @@ def update_user_photos1(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo1_file = request.FILES.get('photo')
+        photo1_file = request.FILES.get('photo1')
+       
         
         # 사용자의 기존 사진 파일 업데이트
         if photo1_file:
             user.photo1.save(photo1_file.name, photo1_file)
-
         
         # 업데이트된 정보 저장
         user.save()
@@ -634,9 +640,6 @@ def update_user_photos1(request):
         return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
-    
-
- # ===========================================================================================   
     
 @csrf_exempt
 def update_user_photos2(request):
@@ -657,12 +660,14 @@ def update_user_photos2(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo2_file = request.FILES.get('photo')
+      
+        photo2_file = request.FILES.get('photo2')
+    
         
         # 사용자의 기존 사진 파일 업데이트
+
         if photo2_file:
             user.photo2.save(photo2_file.name, photo2_file)
-    
         
         # 업데이트된 정보 저장
         user.save()
@@ -670,8 +675,7 @@ def update_user_photos2(request):
         return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
-
- # ===========================================================================================       
+    
 @csrf_exempt
 def update_user_photos3(request):
     if request.method == 'POST':
@@ -691,9 +695,11 @@ def update_user_photos3(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo3_file = request.FILES.get('photo')
+      
+        photo3_file = request.FILES.get('photo3')
         
         # 사용자의 기존 사진 파일 업데이트
+
         if photo3_file:
             user.photo3.save(photo3_file.name, photo3_file)
         
@@ -704,11 +710,8 @@ def update_user_photos3(request):
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
     
-
-
-
-
  # ===========================================================================================      
+ 
 @csrf_exempt
 def token(request):
     if request.method == 'POST':
@@ -745,8 +748,11 @@ def token(request):
     else:
         return JsonResponse({'error': 'POST 메서드만 허용됩니다.'}, status=405)        
 
+
 from django.http import HttpResponse
 from .tasks import send_user_info_to_server
+
+
 
 def send_user_info(request):
     send_user_info_to_server()
