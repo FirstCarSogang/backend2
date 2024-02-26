@@ -143,7 +143,6 @@ class otp_check(View):
 # ===========================================================================================   
 @method_decorator(csrf_exempt, name='dispatch')
 class LoginView(View):
-    
     def post(self, request):
         data = json.loads(request.body)
         username = data.get('studentId')
@@ -171,22 +170,17 @@ class LoginView(View):
         user_profile.save()
 
         response_data = {
-<<<<<<< HEAD
             'access_token': access_token,
             'refresh_token': refresh_token,
             'studentId': user_profile.username,
             # 필요한 다른 필드도 추가할 수 있음
             'message': '로그인되었습니다.'
-=======
-            'accessToken': access_token,
-            'refreshToken': refresh_token,
-            'studentId': user_profile.username,
-            'message': 'login.'
->>>>>>> ef6cde7a322384187dac09df0bb199b8929468d3
         }
         
         return JsonResponse(response_data, status=200)
 
+    def get(self, request):
+        return JsonResponse({'error': 'GET 요청은 허용되지 않습니다.'}, status=405)
     
     
 # =========================================================================================== 
@@ -345,7 +339,6 @@ class PasswordResetView(View):
 @method_decorator(csrf_exempt, name='dispatch')
 class MyPageView(View):
     def get(self, request):
-        
         # 헤더에서 Bearer 토큰 추출
         token = request.headers.get('Authorization').split()[1]
 
@@ -634,12 +627,12 @@ def update_user_photos1(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo1_file = request.FILES.get('photo')
+        photo1_file = request.FILES.get('photo1')
+       
         
         # 사용자의 기존 사진 파일 업데이트
         if photo1_file:
             user.photo1.save(photo1_file.name, photo1_file)
-
         
         # 업데이트된 정보 저장
         user.save()
@@ -647,9 +640,6 @@ def update_user_photos1(request):
         return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
-    
-
- # ===========================================================================================   
     
 @csrf_exempt
 def update_user_photos2(request):
@@ -670,12 +660,14 @@ def update_user_photos2(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo2_file = request.FILES.get('photo')
+      
+        photo2_file = request.FILES.get('photo2')
+    
         
         # 사용자의 기존 사진 파일 업데이트
+
         if photo2_file:
             user.photo2.save(photo2_file.name, photo2_file)
-    
         
         # 업데이트된 정보 저장
         user.save()
@@ -683,8 +675,7 @@ def update_user_photos2(request):
         return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
-
- # ===========================================================================================       
+    
 @csrf_exempt
 def update_user_photos3(request):
     if request.method == 'POST':
@@ -704,9 +695,11 @@ def update_user_photos3(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo3_file = request.FILES.get('photo')
+      
+        photo3_file = request.FILES.get('photo3')
         
         # 사용자의 기존 사진 파일 업데이트
+
         if photo3_file:
             user.photo3.save(photo3_file.name, photo3_file)
         
@@ -717,11 +710,8 @@ def update_user_photos3(request):
     else:
         return JsonResponse({'error': 'Method Not Allowed'}, status=405)
     
-
-
-
-
  # ===========================================================================================      
+ 
 @csrf_exempt
 def token(request):
     if request.method == 'POST':
@@ -761,11 +751,8 @@ def token(request):
 
 from django.http import HttpResponse
 from .tasks import send_user_info_to_server
-<<<<<<< HEAD
 
 
-=======
->>>>>>> ef6cde7a322384187dac09df0bb199b8929468d3
 
 def send_user_info(request):
     send_user_info_to_server()
