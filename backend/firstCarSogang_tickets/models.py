@@ -8,7 +8,7 @@ class Ticket(models.Model):
     progressingDay = models.IntegerField(verbose_name="진행중인 날짜")
     isAnswered = models.BooleanField(verbose_name="답변 여부", default=False)
     choose = models.BooleanField(verbose_name="선택 여부", default=False)
-    dayQuestion = ArrayField(models.CharField(max_length=10), null=True, blank=True)
+    day_question = ArrayField(models.CharField(max_length=1000), null=True, blank=True)
     user = models.ForeignKey(UserProfile, verbose_name="내 티켓 아이디", on_delete=models.CASCADE, null=True, blank=True, related_name='tickets')
     withWhom = models.ForeignKey(UserProfile, verbose_name="상대편 티켓 아이디", on_delete=models.CASCADE, null=True, blank=True, related_name='tickets_with_whom')
 
@@ -22,6 +22,7 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.from_user} at {self.created_at}"
+
 class Day1Question(models.Model):
     question = models.CharField(max_length=1000, verbose_name="질문")
     placeholder = models.CharField(max_length=1000)
