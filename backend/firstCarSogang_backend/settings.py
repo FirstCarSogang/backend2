@@ -92,8 +92,12 @@ CORS_ALLOW_CREDENTIALS = True
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / "db.sqlite3",
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'mydatabase',
+        'USER': 'postgres',
+        'PASSWORD': 'a',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -160,7 +164,7 @@ EMAIL_HOST_PASSWORD = ''
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static')
+    #os.path.join(BASE_DIR, 'static')
 ]
 
 
