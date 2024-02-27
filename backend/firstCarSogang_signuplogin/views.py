@@ -359,11 +359,15 @@ class MyPageView(View):
         except UserProfile.DoesNotExist:
             return JsonResponse({'error': 'User not found'}, status=404)
         
+        if user.train == False :
+            train_value = 'fast'
+        elif user.train == True:
+            train_value = 'slow'
         # 응답 데이터 구성
         response_data = {
             'studentId': user.username,
             'name': user.name,
-            'train': user.train,
+            'train': train_value,
             # 필요한 다른 정보도 추가 가능
         }
 
@@ -397,9 +401,9 @@ def toggle_train_status(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         if train_status == 'fast':
-            train_value = True
-        elif train_status == 'slow':
             train_value = False
+        elif train_status == 'slow':
+            train_value =  True
         # 유저 정보에서 train 값을 변경
         user.train = train_value
         user.save()
@@ -589,14 +593,10 @@ class matching(View):
             return JsonResponse({'error': 'User not found'}, status=404) 
   
         # 사용자의 사진 URL 가져오기
-        photo1_url = user.photo1.url if user.photo1 else None
-        photo2_url = user.photo2.url if user.photo2 else None
-        photo3_url = user.photo3.url if user.photo3 else None
-
+        photo1_url = user.photo1.url 
+        photo2_url = user.photo2.url 
+        photo3_url = user.photo3.url 
         # 프론트엔드에서 접근할 수 있는 URL로 변환
-        photo1_url = photo1_url 
-        photo2_url = photo2_url 
-        photo3_url = photo3_url 
         
         # 추가 정보 가져오기
         ticket_count = user.ticketCount
@@ -631,16 +631,17 @@ def update_user_photos1(request):
         except UserProfile.DoesNotExist:
             return JsonResponse({'error': 'User not found'}, status=404)
         
-        # 프론트엔드에서 전송된 사진 파일 받기
-        photo1_file = request.FILES.get('photo')
-       
+          # 프론트엔드에서 전송된 사진 파일 받기
+        photo_file = request.FILES.get('photo')
         
         # 사용자의 기존 사진 파일 업데이트
-        if photo1_file:
-            user.photo1.save(photo1_file.name, photo1_file)
-        
-        # 업데이트된 정보 저장
-        user.save()
+        if photo_file:
+            # 기존 사진이 있으면 삭제
+            if user.photo1:
+                user.photo1.delete()
+            # 새로운 사진으로 업데이트
+            user.photo1 = photo_file
+            user.save()
         
         return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
@@ -665,17 +666,17 @@ def update_user_photos2(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-      
-        photo2_file = request.FILES.get('photo')
-    
+         # 프론트엔드에서 전송된 사진 파일 받기
+        photo_file = request.FILES.get('photo')
         
         # 사용자의 기존 사진 파일 업데이트
-
-        if photo2_file:
-            user.photo2.save(photo2_file.name, photo2_file)
-        
-        # 업데이트된 정보 저장
-        user.save()
+        if photo_file:
+            # 기존 사진이 있으면 삭제
+            if user.photo2:
+                user.photo2.delete()
+            # 새로운 사진으로 업데이트
+            user.photo2 = photo_file
+            user.save()
         
         return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
@@ -705,11 +706,17 @@ def update_user_photos3(request):
         
         # 사용자의 기존 사진 파일 업데이트
 
-        if photo3_file:
-            user.photo3.save(photo3_file.name, photo3_file)
+           # 프론트엔드에서 전송된 사진 파일 받기
+        photo_file = request.FILES.get('photo')
         
-        # 업데이트된 정보 저장
-        user.save()
+        # 사용자의 기존 사진 파일 업데이트
+        if photo_file:
+            # 기존 사진이 있으면 삭제
+            if user.photo3:
+                user.photo3.delete()
+            # 새로운 사진으로 업데이트
+            user.photo3 = photo_file
+            user.save()
         
         return JsonResponse({'message': '사진이 업데이트되었습니다.'}, status=200)
     else:
