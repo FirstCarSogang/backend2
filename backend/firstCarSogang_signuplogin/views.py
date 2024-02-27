@@ -271,11 +271,11 @@ class EnterOTPView(View):
         try:
             data = json.loads(request.body)
             email = data.get('email')
-            input_otp = data.get('input_otp')
+            otp = data.get('otp')
         except json.JSONDecodeError:
             return JsonResponse({'error': '잘못된 JSON 형식입니다.'}, status=400)
         
-        if email and input_otp:
+        if email and otp:
             # 이메일을 기반으로 사용자 조회
             user = UserProfile.objects.filter(email=email).first()
 
@@ -283,7 +283,7 @@ class EnterOTPView(View):
             if user:
                 user_otp = user.otp
                 
-                if user_otp != input_otp:
+                if user_otp != otp:
                     # OTP가 일치하지 않는 경우
                     return JsonResponse({'error': '입력한 OTP가 유효하지 않습니다.'}, status=400)
                 else:
@@ -304,7 +304,7 @@ class PasswordResetView(View):
             data = json.loads(request.body)
             email = data.get('email')
             new_password = data.get('new_password')
-            confirm_new_password = data.get('confirm_new_password')
+            confirm_new_password = data.get('new_confirm_password')
         except json.JSONDecodeError:
             return JsonResponse({'error': '잘못된 JSON 형식입니다.'}, status=400)
         

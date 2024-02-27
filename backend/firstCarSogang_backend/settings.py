@@ -146,7 +146,7 @@ EMAIL_HOST = 'mail.sogang.ac.kr'
 EMAIL_PORT = 465
 EMAIL_USE_SSL = True
 EMAIL_HOST_USER = 'hansowon'
-EMAIL_HOST_PASSWORD = ''
+EMAIL_HOST_PASSWORD = 'cjtcktjrkd2024@'
 
 
 
