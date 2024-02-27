@@ -26,7 +26,7 @@ def send_user_info_to_server():
     user_info_list = get_user_info()  # 유저 정보 가져오기
 
     # 모델 서버의 엔드포인트 URL
-    model_server_url = 'http://your_model_server_endpoint.com/'
+    model_server_url = 'https://aipubdev.sogang.ten1010.io/'
 
     # 가져온 각 유저 정보를 모델 서버로 전송
     for user_info in user_info_list:

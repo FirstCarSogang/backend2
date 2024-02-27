@@ -32,7 +32,7 @@ class Signup_register(View):
 
             existing_user = UserProfile.objects.filter(username=data['studentId']).exists()
             if existing_user:
-                error_message = {"error": "이미 회원가입이 되어있는 학번입니다."}
+                error_message = {"error": "This is a studentid that has already been registered as a member."}
                 return JsonResponse(error_message, status=400)
             
             # 모델에 데이터 저장
@@ -58,12 +58,12 @@ class Signup_register(View):
                 'photo1': str(user_profile.photo1),  # 이미지는 일단 경로로 전송
                 'photo2': str(user_profile.photo2),
                 'photo3': str(user_profile.photo3),
-                'train': 'fast' if user_profile.train else 'normal',  # Boolean 값을 문자열로 변환
+                'train': 'fast' if user_profile.train else 'slow',  # Boolean 값을 문자열로 변환
                 'date_joined': str(user_profile.date_joined),
                 'last_login': str(user_profile.last_login),
                 'ticketCount': user_profile.ticketCount,
                 'useTicket': user_profile.useTicket,
-                'message': '회원가입에 성공했습니다.'
+                'message': 'You have successfully registered as a member.'
             }
 
             # 응답 전송
@@ -86,31 +86,30 @@ class mail_otp(View):
                 data = json.loads(request.body)
                 email = data.get('email')
             except json.JSONDecodeError:
-                return JsonResponse({'error': '잘못된 JSON 형식입니다.'}, status=400)
+                return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
 
             if email:
                 # OTP 생성 및 저장
-                otp_instance = EmailVerificationOTP.create(email)
-                otp = otp_instance.otp
-                
+                otp = EmailVerificationOTP.create_or_update(email)
+               
                 # 생성된 OTP를 이메일로 전송
-                subject = 'OTP Verification'
-                message = f'Your OTP for registration is: {otp}'
+                subject = '첫차서강 OTP 인증번호'
+                message = f'첫차서강 이메일 인증 번호: {otp}'
                 email_from = settings.EMAIL_HOST_USER
                 email_to = [email]
                 EmailMessage(subject, message, email_from, email_to).send()
 
                 response_data = {
                     'success': True,
-                    'message': 'OTP가 이메일로 전송되었습니다.',
+                    'message': 'OTP has been emailed.',
                 }
                 return JsonResponse(response_data, status=200)
             else:
                 # 이메일 주소가 제공되지 않은 경우
-                return JsonResponse({'error': '이메일 주소가 제공되지 않았습니다.'}, status=400)
+                return JsonResponse({'error': 'email address was not provided.'}, status=400)
         else:
             # POST 요청이 아닌 경우
-            return JsonResponse({'error': '잘못된 요청 방식입니다.'}, status=405)
+            return JsonResponse({'error': 'Invalid request method.'}, status=405)
         
  # ===========================================================================================      
          
@@ -125,20 +124,26 @@ class otp_check(View):
                 input_otp = data.get('input_otp')
                 email = data.get('email')
             except json.JSONDecodeError:
-                return JsonResponse({'success': False, 'error_message': '잘못된 JSON 형식입니다.'}, status=400)
+                return JsonResponse({'success': False, 'error_message': 'Invalid JSON format.'}, status=400)
 
         if email and input_otp:
-            try:
-                # 해당 이메일과 OTP가 일치하는지 확인
-                otp_instance = EmailVerificationOTP.objects.get(email=email, otp=input_otp)
-                if otp_instance.is_valid():
-                    return JsonResponse({'success': True, 'message': 'OTP 인증이 완료되었습니다.'}, status=200)
-                else:
-                    return JsonResponse({'success': False, 'message': 'OTP가 만료되었습니다.'}, status=400)
-            except EmailVerificationOTP.DoesNotExist:
-                return JsonResponse({'success': False, 'message': '유효하지 않은 OTP입니다.'}, status=400)
+                try:
+                    # 해당 이메일과 일치하는 OTP 객체 가져오기
+                    otp_instance = EmailVerificationOTP.objects.get(email=email)
+                    # 입력된 OTP와 DB에 저장된 OTP 비교
+                    if otp_instance.otp == input_otp:
+                        # OTP가 일치하고 유효한지 확인
+                        if otp_instance.is_valid():
+                            return JsonResponse({'success': True, 'message': 'OTP authentication completed.'}, status=200)
+                        else:
+                            return JsonResponse({'success': False, 'message': 'OTP has expired.'}, status=400)
+                    else:
+                        return JsonResponse({'success': False, 'message': 'Invalid OTP.'}, status=400)
+                except EmailVerificationOTP.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'Invalid OTP.'}, status=400)
         else:
-            return JsonResponse({'success': False, 'message': '이메일 주소와 OTP를 모두 제공해야 합니다.'}, status=400)
+            return JsonResponse({'success': False, 'message': 'You must provide both an email address and an OTP.'}, status=400)
+
     
 # ===========================================================================================   
 @method_decorator(csrf_exempt, name='dispatch')
@@ -589,9 +594,9 @@ class matching(View):
         photo3_url = user.photo3.url if user.photo3 else None
 
         # 프론트엔드에서 접근할 수 있는 URL로 변환
-        photo1_url = 'http://127.0.0.1:8000' + photo1_url if photo1_url else None
-        photo2_url = 'http://127.0.0.1:8000' + photo2_url if photo2_url else None
-        photo3_url = 'http://127.0.0.1:8000' + photo3_url if photo3_url else None
+        photo1_url = photo1_url 
+        photo2_url = photo2_url 
+        photo3_url = photo3_url 
         
         # 추가 정보 가져오기
         ticket_count = user.ticketCount

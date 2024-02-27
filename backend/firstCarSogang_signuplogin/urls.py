@@ -1,6 +1,7 @@
 from django.urls import path
 from firstCarSogang_signuplogin.views import *
 from . import views
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('login',LoginView.as_view(), name='LoginView'),
@@ -30,4 +31,4 @@ urlpatterns = [
 
     path('token',token, name='token'),
     path('send_user_info/', views.send_user_info, name='send_user_info'),
-]
+]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

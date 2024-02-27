@@ -45,11 +45,20 @@ class EmailVerificationOTP(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     @classmethod
-    def create(cls, email):
+    def create_or_update(cls, email):
+        # 이메일로 검색하여 해당 이메일의 모든 OTP 객체를 가져옴
+        otp_instances = cls.objects.filter(email=email)
+        
+        # 만약 해당 이메일에 대한 OTP 객체가 존재한다면
+        if otp_instances.exists():
+            # 모든 객체를 삭제
+            otp_instances.delete()
+
         # 새로운 OTP 생성
         otp = generate_otp()
         # 생성된 OTP와 이메일 주소로 객체 생성
-        return cls.objects.create(email=email, otp=otp)
+        otp_create = cls.objects.create(email=email, otp=otp)
+        return otp_create
 
     def is_valid(self):
         # 만료 시간 확인 (예: 5분)
