@@ -17,63 +17,61 @@ import jwt
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import check_password
 from django.http import FileResponse
-import os
+import os   
 from django.http import HttpResponse
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.core.files.storage import FileSystemStorage
+
 
 # ===========================================================================================
 @method_decorator(csrf_exempt, name='dispatch')
+
 class Signup_register(View):
     def post(self, request):
         try:
-            # POST 요청의 body에서 JSON 데이터 추출
-            data = json.loads(request.body)
+           # 일반적인 폼 데이터 받아오기
+            name = request.POST.get('name')
+            student_id = request.POST.get('studentId')
+            kakaotalk_id = request.POST.get('kakaotalkId')
+            email = request.POST.get('email')
+            train = request.POST.get('train')
+            password = request.POST.get('password')
 
-            existing_user = UserProfile.objects.filter(username=data['studentId']).exists()
-            if existing_user:
-                error_message = {"error": "This is a studentid that has already been registered as a member."}
-                return JsonResponse(error_message, status=400)
-            
+            # 파일 업로드 데이터 받아오기
+            fs = FileSystemStorage()
+            photos = []
+            for i in range(1, 4):
+                file_key = f'photo{i}'
+                if file_key in request.FILES:
+                    file = request.FILES[file_key]
+                    # 파일 저장
+                    filename = fs.save(file.name, file)
+                    photos.append(filename)
+
             # 모델에 데이터 저장
-            user_profile = UserProfile(
-                name=data['name'],
-                username=data['studentId'],
-                kakaotalkID=data['kakaotalkID'],
-                email=data['email'],
-                photo1=data['photo1'],
-                photo2=data['photo2'],
-                photo3=data['photo3'],
-                train=data['train'] == 'fast',  # 'fast'이면 True, 그 외에는 False
+            user_profile = UserProfile.objects.create(
+                name=name,
+                username=student_id,
+                kakaotalkID=kakaotalk_id,
+                email=email,
+                train=train == 'fast',
+                password=password,
+                photo1=photos[0] ,
+                photo2=photos[1], 
+                photo3=photos[2] ,
             )
-            
-            user_profile.save()
-
-            # 응답 데이터 구성
+            # 응답 전송
             response_data = {
-                'name': user_profile.name,
-                'studentId': user_profile.username,
-                'kakaotalkID': user_profile.kakaotalkID,
-                'email': user_profile.email,
-                'photo1': str(user_profile.photo1),  # 이미지는 일단 경로로 전송
-                'photo2': str(user_profile.photo2),
-                'photo3': str(user_profile.photo3),
-                'train': 'fast' if user_profile.train else 'slow',  # Boolean 값을 문자열로 변환
-                'date_joined': str(user_profile.date_joined),
-                'last_login': str(user_profile.last_login),
-                'ticketCount': user_profile.ticketCount,
-                'useTicket': user_profile.useTicket,
                 'message': 'You have successfully registered as a member.'
             }
 
-            # 응답 전송
-            return JsonResponse(response_data, status=201)  # 201 Created 상태코드 반환
-        
+            return JsonResponse(response_data, status=201)  # 201 Created 상태코드 반환 
+
         except Exception as e:
             # 에러가 발생한 경우 에러 메시지와 함께 400 Bad Request 상태 코드 반환
             error_message = {"error": str(e)}
             return JsonResponse(error_message, status=400)
-       
 # ===========================================================================================
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -89,8 +87,11 @@ class mail_otp(View):
                 return JsonResponse({'error': 'Invalid JSON format.'}, status=400)
 
             if email:
-                # OTP 생성 및 저장
-                otp = EmailVerificationOTP.create_or_update(email)
+                # email 변수를 사용하여 모델의 인스턴스 생성 또는 업데이트
+                otp_instance = EmailVerificationOTP.create_or_update(email)
+
+                # 생성 또는 업데이트된 모델 인스턴스의 otp 속성 가져오기
+                otp = otp_instance.otp
                
                 # 생성된 OTP를 이메일로 전송
                 subject = '첫차서강 OTP 인증번호'
@@ -102,7 +103,7 @@ class mail_otp(View):
                 response_data = {
                     'success': True,
                     'message': 'OTP has been emailed.',
-                }
+                }   
                 return JsonResponse(response_data, status=200)
             else:
                 # 이메일 주소가 제공되지 않은 경우
@@ -175,10 +176,9 @@ class LoginView(View):
         user_profile.save()
 
         response_data = {
-            'access_token': access_token,
-            'refresh_token': refresh_token,
+            'accessToken': access_token,
+            'refreshToken': refresh_token,
             'studentId': user_profile.username,
-            # 필요한 다른 필드도 추가할 수 있음
             'message': '로그인되었습니다.'
         }
         
@@ -406,7 +406,7 @@ def toggle_train_status(request):
 
         # 변경된 train 값과 메시지를 응답으로 보냄
         response_data = {
-            'train': user.train,
+            'train': train_status,
             'message': 'Train status successfully toggled.',
         }
         return JsonResponse(response_data, status=200)
@@ -466,7 +466,7 @@ def change_kakaotalkid(request):
         # 요청의 본문에서 JSON 데이터 추출
         try:
             data = json.loads(request.body)
-            kakaotalkID = data.get('kakaotalkID')
+            kakaotalkID = data.get('kakaotalkId')
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON format in request body.'}, status=400)
         
@@ -522,7 +522,7 @@ class kakaotalk(View):
         
         # 응답 데이터 구성
         response_data = {
-            'kakaotalkID': user.kakaotalkID
+            'kakaotalkId': user.kakaotalkID
         }
 
         # 응답 반환
@@ -632,7 +632,7 @@ def update_user_photos1(request):
             return JsonResponse({'error': 'User not found'}, status=404)
         
         # 프론트엔드에서 전송된 사진 파일 받기
-        photo1_file = request.FILES.get('photo1')
+        photo1_file = request.FILES.get('photo')
        
         
         # 사용자의 기존 사진 파일 업데이트
@@ -666,7 +666,7 @@ def update_user_photos2(request):
         
         # 프론트엔드에서 전송된 사진 파일 받기
       
-        photo2_file = request.FILES.get('photo2')
+        photo2_file = request.FILES.get('photo')
     
         
         # 사용자의 기존 사진 파일 업데이트
@@ -701,7 +701,7 @@ def update_user_photos3(request):
         
         # 프론트엔드에서 전송된 사진 파일 받기
       
-        photo3_file = request.FILES.get('photo3')
+        photo3_file = request.FILES.get('photo')
         
         # 사용자의 기존 사진 파일 업데이트
 

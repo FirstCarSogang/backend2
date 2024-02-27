@@ -1,3 +1,4 @@
+
 from django.db import models
 from firstCarSogang_signuplogin.models import UserProfile
 from django.db.models import JSONField
@@ -48,3 +49,4 @@ class AfterDay1Question(models.Model):
     comments = models.ManyToManyField(Comment, related_name='after_day1_comments')
     def __str__(self):
         return f"AfterDay1Question {self.question_id}: {self.question}"
+    

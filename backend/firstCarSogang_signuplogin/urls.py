@@ -30,5 +30,5 @@ urlpatterns = [
     path('matching/changephoto/3',update_user_photos3, name= 'changephoto3'),
 
     path('token',token, name='token'),
-    path('send_user_info/', views.send_user_info, name='send_user_info'),
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('send_user_info', views.send_user_info, name='send_user_info'),
+]
